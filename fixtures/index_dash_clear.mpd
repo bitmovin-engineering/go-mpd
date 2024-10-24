@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" id="9ac51a35-c19f-4d8b-9adf-84739018519a" profiles="urn:hbbtv:dash:profile:isoff-live:2012,urn:mpeg:dash:profile:isoff-live:2011" type="dynamic" availabilityStartTime="2024-10-18T11:45:31.516Z" publishTime="2024-10-18T11:45:31.516Z" minimumUpdatePeriod="P0Y0M24DT19H0M0.000S" minBufferTime="P0Y0M0DT0H0M2.000S" timeShiftBufferDepth="P0Y0M0DT0H1M0.000S" maxSegmentDuration="P0Y0M0DT0H0M3.840S" xmlns:ns2="http://www.w3.org/1999/xlink">
+  <Period id="777fd297-3cae-4556-b728-b1e045f0e196" start="P0Y0M0DT0H0M0.000S">
+    <AdaptationSet contentType="video" mimeType="video/mp4" segmentAlignment="true" par="16:9" maxWidth="1920" maxHeight="1080" startWithSAP="1">
+      <Representation id="9d0b3fe2-a3c3-4e0c-ab9c-a1e73cc91f65" bandwidth="2400000" width="1920" height="1080" codecs="avc1.640028" sar="1:1" frameRate="25">
+        <SegmentTemplate media="video/mp4/1080p2400kbps/segment_muwGjQkHnm_$Number$.m4s" startNumber="0" timescale="25000" duration="96000" initialization="video/mp4/1080p2400kbps/init_muwGjQkHnm.m4s"/>
+      </Representation>
+      <Representation id="f623484d-c8ca-44de-b377-e5230ce55ce9" bandwidth="1750000" width="1280" height="720" codecs="avc1.64001F" sar="1:1" frameRate="25">
+        <SegmentTemplate media="video/mp4/720p1750kbps/segment_muwGjQkHnm_$Number$.m4s" startNumber="0" timescale="25000" duration="96000" initialization="video/mp4/720p1750kbps/init_muwGjQkHnm.m4s"/>
+      </Representation>
+      <Representation id="69998e2f-a563-48d2-bc1e-9f46dd432e5d" bandwidth="1200000" width="1024" height="576" codecs="avc1.64001F" sar="1:1" frameRate="25">
+        <SegmentTemplate media="video/mp4/576p1200kbps/segment_muwGjQkHnm_$Number$.m4s" startNumber="0" timescale="25000" duration="96000" initialization="video/mp4/576p1200kbps/init_muwGjQkHnm.m4s"/>
+      </Representation>
+      <Representation id="ec9ae314-48cd-489d-aeab-deef3dba8739" bandwidth="750000" width="832" height="468" codecs="avc1.64001E" sar="1:1" frameRate="25">
+        <SegmentTemplate media="video/mp4/468p750kbps/segment_muwGjQkHnm_$Number$.m4s" startNumber="0" timescale="25000" duration="96000" initialization="video/mp4/468p750kbps/init_muwGjQkHnm.m4s"/>
+      </Representation>
+      <Representation id="ea36bcc9-9336-4c68-833b-fd2b97335b5a" bandwidth="500000" width="640" height="360" codecs="avc1.64001E" sar="1:1" frameRate="25">
+        <SegmentTemplate media="video/mp4/360p500kbps/segment_muwGjQkHnm_$Number$.m4s" startNumber="0" timescale="25000" duration="96000" initialization="video/mp4/360p500kbps/init_muwGjQkHnm.m4s"/>
+      </Representation>
+      <Representation id="c4b9e74b-1b61-4805-aff1-75693912ca85" bandwidth="350000" width="512" height="288" codecs="avc1.640015" sar="1:1" frameRate="25">
+        <SegmentTemplate media="video/mp4/288p350kbps/segment_muwGjQkHnm_$Number$.m4s" startNumber="0" timescale="25000" duration="96000" initialization="video/mp4/288p350kbps/init_muwGjQkHnm.m4s"/>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet contentType="audio" mimeType="audio/mp4" segmentAlignment="true" lang="en" startWithSAP="1">
+      <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
+      <Representation id="aa8c9fbe-1f34-4678-b210-b8432e3b4d9a" bandwidth="96000" codecs="mp4a.40.2" audioSamplingRate="48000">
+        <SegmentTemplate media="audio/mp4/96kbps/segment_muwGjQkHnm_$Number$.m4s" startNumber="0" timescale="48000" duration="184320" initialization="audio/mp4/96kbps/init_muwGjQkHnm.m4s"/>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>
