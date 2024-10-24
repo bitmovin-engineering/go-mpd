@@ -13,7 +13,7 @@ import (
 
 func XmlClean(xmlString string, cfg xmllib.CfgType) string {
 	xmlReader := strings.NewReader(xmlString)
-	cleanXmlLeft, err := xmllib.ConvertXML(xmlReader, cfg) // returns a []byte, err
+	cleanXmlLeft, err := xmllib.ConvertXML(xmlReader, cfg)
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
 		os.Exit(1)
@@ -22,7 +22,7 @@ func XmlClean(xmlString string, cfg xmllib.CfgType) string {
 }
 
 func Test_UnmarshalMarshalAllFiles(t *testing.T) {
-	files, err := os.ReadDir("fixtures")
+	files, err := os.ReadDir("testdata")
 	if err != nil {
 		t.Fatalf("Failed to read testdata directory: %v", err)
 	}
@@ -31,7 +31,7 @@ func Test_UnmarshalMarshalAllFiles(t *testing.T) {
 
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".mpd") {
 			t.Run(file.Name(), func(t *testing.T) {
-				expected, err := os.ReadFile("fixtures/" + file.Name())
+				expected, err := os.ReadFile("testdata/" + file.Name())
 				if err != nil {
 					t.Fatalf("Failed to read file %s: %v", file.Name(), err)
 				}
