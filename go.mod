@@ -1,4 +1,4 @@
-module github.com/unki2aut/go-mpd
+module github.com/bitmovin-engineering/go-mpd
 
 go 1.22.0
 
@@ -9,13 +9,11 @@ require (
 	github.com/sergi/go-diff v1.3.1
 	github.com/stretchr/testify v1.9.0
 	github.com/unki2aut/go-xsd-types v0.0.0-20200220223938-30e5405398f8
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 )
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
-	github.com/kr/text v0.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pschlump/MiscLib v1.0.7 // indirect
 	github.com/pschlump/ansi v1.0.6 // indirect

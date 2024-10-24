@@ -1,4 +1,3 @@
-[![Build Status](https://github.com/unki2aut/go-mpd/actions/workflows/ci.yml/badge.svg)](https://github.com/unki2aut/go-mpd/actions/workflows/ci.yml) [![Go Coverage](https://github.com/unki2aut/go-mpd/wiki/coverage.svg)](https://raw.githack.com/wiki/unki2aut/go-mpd/coverage.html) [![Go Report Card](https://goreportcard.com/badge/github.com/unki2aut/go-mpd)](https://goreportcard.com/report/github.com/unki2aut/go-mpd) [![GoDoc](https://godoc.org/github.com/unki2aut/go-mpd?status.svg)](https://godoc.org/github.com/unki2aut/go-mpd)
 # go-mpd 
 
 Go library for parsing and generating MPEG-DASH Media Presentation Description (MPD) files.
@@ -12,7 +11,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/unki2aut/go-mpd"
+	"github.com/bitmovin-engineering/go-mpd"
 )
 
 func main() {
