@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" minBufferTime="PT1.5S" profiles="urn:mpeg:dash:profile:isoff-live:2011" type="static" mediaPresentationDuration="PT0H4M40.00S">
+  <Period>
+    <AdaptationSet id="1" mimeType="video/mp4" codecs="avc1.42E01E" startWithSAP="1" segmentAlignment="true">
+      <Representation id="video_100p_24fps_h264" width="160" height="100" frameRate="24" bandwidth="200000">
+        <BaseURL>video_100p_24fps_h264.mp4</BaseURL>
+      </Representation>
+      <Representation id="video_144p_24fps_h264" width="256" height="144" frameRate="24" bandwidth="300000">
+        <BaseURL>video_144p_24fps_h264.mp4</BaseURL>
+      </Representation>
+      <Representation id="video_576p_24fps_h264" width="720" height="576" frameRate="24" bandwidth="800000">
+        <BaseURL>video_576p_24fps_h264.mp4</BaseURL>
+      </Representation>
+      <Representation id="video_720p_24fps_h264" width="1280" height="720" frameRate="24" bandwidth="1200000">
+        <BaseURL>video_720p_24fps_h264.mp4</BaseURL>
+      </Representation>
+      <Representation id="video_1080p_24fps_h264" width="1920" height="1080" frameRate="24" bandwidth="2000000">
+        <BaseURL>video_1080p_24fps_h264.mp4</BaseURL>
+      </Representation>
+      <Representation id="video_2160p_24fps_h264" width="3840" height="2160" frameRate="24" bandwidth="5000000">
+        <BaseURL>video_2160p_24fps_h264.mp4</BaseURL>
+      </Representation>
+      <Representation id="video_4320p_24fps_h264" width="7680" height="4320" frameRate="24" bandwidth="10000000">
+        <BaseURL>video_4320p_24fps_h264.mp4</BaseURL>
+      </Representation>
+      <Representation id="video_100p_50fps_h265" width="160" height="100" frameRate="50" codecs="hev1.1.6.L93.B0" bandwidth="250000">
+        <BaseURL>video_100p_50fps_h265.mp4</BaseURL>
+      </Representation>
+      <Representation id="video_144p_50fps_h265" width="256" height="144" frameRate="50" codecs="hev1.1.6.L93.B0" bandwidth="350000">
+        <BaseURL>video_144p_50fps_h265.mp4</BaseURL>
+      </Representation>
+      <Representation id="video_576p_50fps_h265" width="720" height="576" frameRate="50" codecs="hev1.1.6.L93.B0" bandwidth="1000000">
+        <BaseURL>video_576p_50fps_h265.mp4</BaseURL>
+      </Representation>
+      <Representation id="video_720p_50fps_h265" width="1280" height="720" frameRate="50" codecs="hev1.1.6.L93.B0" bandwidth="1500000">
+        <BaseURL>video_720p_50fps_h265.mp4</BaseURL>
+      </Representation>
+      <Representation id="video_1080p_50fps_h265" width="1920" height="1080" frameRate="50" codecs="hev1.1.6.L93.B0" bandwidth="2500000">
+        <BaseURL>video_1080p_50fps_h265.mp4</BaseURL>
+      </Representation>
+      <Representation id="video_2160p_50fps_h265" width="3840" height="2160" frameRate="50" codecs="hev1.1.6.L93.B0" bandwidth="6000000">
+        <BaseURL>video_2160p_50fps_h265.mp4</BaseURL>
+      </Representation>
+      <Representation id="video_4320p_50fps_h265" width="7680" height="4320" frameRate="50" codecs="hev1.1.6.L93.B0" bandwidth="12000000">
+        <BaseURL>video_4320p_50fps_h265.mp4</BaseURL>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet id="2" mimeType="audio/mp4" lang="ar" codecs="mp4a.40.2" startWithSAP="1" segmentAlignment="true">
+      <Representation id="audio_ar" bandwidth="64000">
+        <BaseURL>audio_ar.mp4</BaseURL>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet id="3" mimeType="audio/mp4" lang="en" codecs="mp4a.40.2" startWithSAP="1" segmentAlignment="true">
+      <Representation id="audio_en" bandwidth="64000">
+        <BaseURL>audio_en.mp4</BaseURL>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet id="4" mimeType="audio/mp4" lang="fr" codecs="mp4a.40.2" startWithSAP="1" segmentAlignment="true">
+      <Representation id="audio_fr" bandwidth="64000">
+        <BaseURL>audio_fr.mp4</BaseURL>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet id="5" mimeType="text/vtt" lang="ar" startWithSAP="1" segmentAlignment="true">
+      <Representation id="subs_ar" bandwidth="1000">
+        <BaseURL>subs_ar.vtt</BaseURL>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet id="6" mimeType="text/vtt" lang="en" startWithSAP="1" segmentAlignment="true">
+      <Representation id="subs_en" bandwidth="1000">
+        <BaseURL>subs_en.vtt</BaseURL>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet id="7" mimeType="text/vtt" lang="fr" startWithSAP="1" segmentAlignment="true">
+      <Representation id="subs_fr" bandwidth="1000">
+        <BaseURL>subs_fr.vtt</BaseURL>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>

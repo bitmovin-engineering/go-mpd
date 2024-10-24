@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MPD mediaPresentationDuration="PT4M23.04S" minBufferTime="PT4S" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" type="static" xmlns="urn:mpeg:dash:schema:mpd:2011">
+  <Period>
+    <!-- Video -->
+    <AdaptationSet contentType="video" maxHeight="1080" maxWidth="1920" mimeType="video/mp4" minHeight="240" minWidth="426" segmentAlignment="true" startWithSAP="1">
+      <Label>myLabelWithoutAttributes1</Label>
+      <Label id="512">myLabelWithIdAttribute1</Label>
+      <Label lang="eng">myLabelWithLangAttribute1</Label>
+      <Label id="2" lang="deu">myLabelWithIdAndLangAttribute1</Label>
+      <Representation bandwidth="10179500" codecs="avc1.640032" frameRate="25" height="1080" id="801ff058-6e7b-4008-94e8-c331cec46a04" scanType="progressive" width="1920">
+        <BaseURL>mp4/videoStream1080.mp4</BaseURL>
+        <SegmentBase indexRange="747-1570">
+          <Initialization range="0-746"/>
+        </SegmentBase>
+      </Representation>
+      <Representation bandwidth="4059064" codecs="avc1.64001F" frameRate="25" height="720" id="79e93876-0658-4d9f-bc46-5615a3f7ad25" scanType="progressive" width="1280">
+        <BaseURL>mp4/videoStream720.mp4</BaseURL>
+        <SegmentBase indexRange="746-1569">
+          <Initialization range="0-745"/>
+        </SegmentBase>
+      </Representation>
+      <Representation bandwidth="2719798" codecs="avc1.64001E" frameRate="25" height="480" id="a79491c1-0fe6-44ec-9c32-2ec6f6eafcba" scanType="progressive" width="854">
+        <BaseURL>mp4/videoStream480.mp4</BaseURL>
+        <SegmentBase indexRange="746-1569">
+          <Initialization range="0-745"/>
+        </SegmentBase>
+      </Representation>
+      <Representation bandwidth="1263730" codecs="avc1.64001E" frameRate="25" height="360" id="183f640c-edde-437d-b1f6-7da0c5c46ea2" scanType="progressive" width="640">
+        <BaseURL>mp4/videoStream360.mp4</BaseURL>
+        <SegmentBase indexRange="746-1569">
+          <Initialization range="0-745"/>
+        </SegmentBase>
+      </Representation>
+      <Representation bandwidth="575526" codecs="avc1.640015" frameRate="25" height="240" id="fa82fa10-9fc4-4c81-9647-0a79b13b9218" scanType="progressive" width="426">
+        <BaseURL>mp4/videoStream240.mp4</BaseURL>
+        <SegmentBase indexRange="746-1569">
+          <Initialization range="0-745"/>
+        </SegmentBase>
+      </Representation>
+    </AdaptationSet>
+    <!-- Audio -->
+    <AdaptationSet contentType="audio" mimeType="audio/mp4" segmentAlignment="true" startWithSAP="1">
+      <Label>myLabelWithoutAttributes2</Label>
+      <Label id="513">myLabelWithIdAttribute2</Label>
+      <Label lang="nor">myLabelWithLangAttribute2</Label>
+      <Label id="3" lang="bla">myLabelWithIdAndLangAttribute2</Label>
+      <Representation audioSamplingRate="48000" bandwidth="100806" codecs="mp4a.40.2" id="9de95f46-b201-4e72-a76e-a6b2922d254b">
+        <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
+        <BaseURL>mp4/audioStream96000.mp4</BaseURL>
+        <SegmentBase indexRange="618-1441">
+          <Initialization range="0-617"/>
+        </SegmentBase>
+      </Representation>
+      <Representation audioSamplingRate="48000" bandwidth="132100" codecs="mp4a.40.2" id="e63525c2-3a71-4aa0-b778-a82aa657f814">
+        <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
+        <BaseURL>mp4/audioStream128000.mp4</BaseURL>
+        <SegmentBase indexRange="618-1441">
+          <Initialization range="0-617"/>
+        </SegmentBase>
+      </Representation>
+      <Representation audioSamplingRate="48000" bandwidth="196050" codecs="mp4a.40.2" id="d4f67a6a-2825-4d4c-9a84-bfd7156944ec">
+        <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
+        <BaseURL>mp4/audioStream192000.mp4</BaseURL>
+        <SegmentBase indexRange="618-1441">
+          <Initialization range="0-617"/>
+        </SegmentBase>
+      </Representation>
+      <Representation audioSamplingRate="48000" bandwidth="259526" codecs="mp4a.40.2" id="af3b3ba6-08b7-4fce-b564-bee49ac45608">
+        <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
+        <BaseURL>mp4/audioStream256000.mp4</BaseURL>
+        <SegmentBase indexRange="618-1441">
+          <Initialization range="0-617"/>
+        </SegmentBase>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>
