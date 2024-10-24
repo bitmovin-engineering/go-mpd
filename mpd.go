@@ -5,15 +5,11 @@ import (
 	"bytes"
 	"encoding/xml"
 	"github.com/unki2aut/go-xsd-types"
-	"io"
-	"regexp"
 )
 
 // http://mpeg.chiariglione.org/standards/mpeg-dash
 // https://www.brendanlong.com/the-structure-of-an-mpeg-dash-mpd.html
 // http://standards.iso.org/ittf/PubliclyAvailableStandards/MPEG-DASH_schema_files/DASH-MPD.xsd
-
-var emptyElementRE = regexp.MustCompile(`></[A-Za-z]+>`)
 
 // MPD represents root XML element.
 type MPD struct {
@@ -63,25 +59,7 @@ func (m *MPD) Encode() ([]byte, error) {
 		return nil, err
 	}
 
-	// hacks for self-closing tags
-	res := new(bytes.Buffer)
-	res.WriteString(`<?xml version="1.0" encoding="utf-8"?>`)
-	res.WriteByte('\n')
-	for {
-		s, err := x.ReadString('\n')
-		if s != "" {
-			s = emptyElementRE.ReplaceAllString(s, `/>`)
-			res.WriteString(s)
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-	res.WriteByte('\n')
-	return res.Bytes(), err
+	return x.Bytes(), nil
 }
 
 // Decode parses MPD XML.
