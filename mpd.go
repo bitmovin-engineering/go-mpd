@@ -43,7 +43,9 @@ type MPD struct {
 	XmlnsCenc                  *string               `xml:"xmlns:cenc,attr"`
 	Cenc                       *string               `xml:"cenc,attr"`
 	Mspr                       *string               `xml:"mspr,attr"`
+	XmlnsMspr                  *string               `xml:"xmlns:mspr,attr"`
 	Mas                        *string               `xml:"mas,attr"`
+	XmlnsMas                   *string               `xml:"xmlns:mas,attr"`
 }
 
 // Do not try to use encoding.TextMarshaler and encoding.TextUnmarshaler:
@@ -299,15 +301,27 @@ type Representation struct {
 }
 
 type ContentProtection struct {
-	SchemeIDURI    *string `xml:"schemeIdUri,attr"`
-	Value          *string `xml:"value,attr"`
-	Cenc           *string `xml:"cenc,attr"`
-	CencPSSH       *string `xml:"cenc:pssh,attr"`
-	CencDefaultKID *string `xml:"cenc:default_KID,attr"`
-	DefaultKID     *string `xml:"default_KID,attr"`
-	CencPsshBody   *string `xml:"cenc:pssh,omitempty"`
-	PsshBody       *Pssh   `xml:"pssh,omitempty"`
-	Pro            *Pro    `xml:"pro,omitempty"`
+	SchemeIDURI         *string             `xml:"schemeIdUri,attr"`
+	Value               *string             `xml:"value,attr"`
+	Cenc                *string             `xml:"cenc,attr"`
+	CencPSSH            *string             `xml:"cenc:pssh,attr"`
+	CencDefaultKID      *string             `xml:"cenc:default_KID,attr"`
+	DefaultKID          *string             `xml:"default_KID,attr"`
+	CencPsshBody        *string             `xml:"cenc:pssh,omitempty"`
+	PsshBody            *Pssh               `xml:"pssh,omitempty"`
+	Pro                 *Pro                `xml:"pro,omitempty"`
+	MsprPro             *string             `xml:"mspr:pro,omitempty"`
+	MarlinContentIds    []*MarlinContentIds `xml:"MarlinContentIds,omitempty"`
+	MasMarlinContentIds []*MarlinContentIds `xml:"mas:MarlinContentIds,omitempty"`
+}
+
+type MarlinContentIds struct {
+	MarlinContentId    *MarlinContentId `xml:"MarlinContentId,omitempty"`
+	MasMarlinContentId *MarlinContentId `xml:"mas:MarlinContentId,omitempty"`
+}
+
+type MarlinContentId struct {
+	Value string `xml:",chardata"`
 }
 
 type Pssh struct {
