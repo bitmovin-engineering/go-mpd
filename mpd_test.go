@@ -1,81 +1,62 @@
 package mpd
 
 import (
-	"io/ioutil"
+	"fmt"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
 	"testing"
 
-	. "gopkg.in/check.v1"
+	"github.com/pschlump/xml-diff/xmllib"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
-func Test(t *testing.T) { TestingT(t) }
-
-type MPDSuite struct{}
-
-var _ = Suite(&MPDSuite{})
-
-func readFile(c *C, name string) (*MPD, string, string) {
-	expected, err := ioutil.ReadFile(name)
-	c.Assert(err, IsNil)
-
-	mpd := new(MPD)
-	err = mpd.Decode(expected)
-	c.Assert(err, IsNil)
-
-	obtained, err := mpd.Encode()
-	c.Assert(err, IsNil)
-	obtainedName := name + ".ignore"
-	err = ioutil.WriteFile(obtainedName, obtained, 0666)
-	c.Assert(err, IsNil)
-
-	os.Remove(obtainedName)
-
-	return mpd, string(expected), string(obtained)
-}
-
-func checkLineByLine(c *C, obtained string, expected string) {
-	obtainedSlice := strings.Split(strings.TrimSpace(obtained), "\n")
-	expectedSlice := strings.Split(strings.TrimSpace(expected), "\n")
-	c.Assert(obtainedSlice, HasLen, len(expectedSlice))
-
-	for i := range obtainedSlice {
-		c.Check(obtainedSlice[i], Equals, expectedSlice[i], Commentf("line %d", i+1))
+func XmlClean(xmlString string, cfg xmllib.CfgType) string {
+	xmlReader := strings.NewReader(xmlString)
+	cleanXmlLeft, err := xmllib.ConvertXML(xmlReader, cfg) // returns a []byte, err
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+		os.Exit(1)
 	}
+	return cleanXmlLeft.String()
 }
 
-func testUnmarshalMarshalElemental(c *C, name string) {
-	_, expected, obtained := readFile(c, name)
+func Test_UnmarshalMarshalAllFiles(t *testing.T) {
+	files, err := os.ReadDir("fixtures")
+	if err != nil {
+		t.Fatalf("Failed to read testdata directory: %v", err)
+	}
 
-	// strip stupid XML rubbish
-	expected = strings.Replace(expected, `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" `, ``, 1)
-	expected = strings.Replace(expected, `xsi:schemaLocation="urn:mpeg:dash:schema:mpd:2011 http://standards.iso.org/ittf/PubliclyAvailableStandards/MPEG-DASH_schema_files/DASH-MPD.xsd" `, ``, 1)
+	for _, file := range files {
 
-	checkLineByLine(c, obtained, expected)
-}
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".mpd") {
+			t.Run(file.Name(), func(t *testing.T) {
+				expected, err := os.ReadFile("fixtures/" + file.Name())
+				if err != nil {
+					t.Fatalf("Failed to read file %s: %v", file.Name(), err)
+				}
 
-func testUnmarshalMarshalAkamai(c *C, name string) {
-	_, expected, obtained := readFile(c, name)
+				mpd := new(MPD)
+				err = mpd.Decode(expected)
+				if err != nil {
+					assert.Fail(t, "Error decoding MPD", err)
+				}
 
-	// strip stupid XML rubbish
-	expected = strings.Replace(expected, `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" `, ``, 1)
-	expected = strings.Replace(expected, ` xsi:schemaLocation="urn:mpeg:DASH:schema:MPD:2011 DASH-MPD.xsd"`, ``, 1)
+				obtained, err := mpd.Encode()
+				if err != nil {
+					assert.Fail(t, "Error encoding MPD", err)
+				}
 
-	checkLineByLine(c, obtained, expected)
-}
+				cleanXmlLeft := XmlClean(string(expected), xmllib.CfgType{})
+				cleanXmlRight := XmlClean(string(obtained), xmllib.CfgType{})
 
-func (s *MPDSuite) TestUnmarshalMarshalVod(c *C) {
-	testUnmarshalMarshalElemental(c, "fixtures/elemental_delta_vod.mpd")
-}
-
-func (s *MPDSuite) TestUnmarshalMarshalLive(c *C) {
-	testUnmarshalMarshalElemental(c, "fixtures/elemental_delta_live.mpd")
-}
-
-func (s *MPDSuite) TestUnmarshalMarshalLiveDelta161(c *C) {
-	testUnmarshalMarshalElemental(c, "fixtures/elemental_delta_1.6.1_live.mpd")
-}
-
-func (s *MPDSuite) TestUnmarshalMarshalSegmentTemplate(c *C) {
-	testUnmarshalMarshalAkamai(c, "fixtures/akamai_bbb_30fps.mpd")
+				dmp := diffmatchpatch.New()
+				diffs := dmp.DiffMain(cleanXmlLeft, cleanXmlRight, false)
+				if len(diffs) > 1 {
+					// 1, because diff equal is always there
+					t.Fatalf("%d Differences found:\n%s", len(diffs), dmp.DiffPrettyText(diffs))
+				}
+			})
+		}
+	}
 }
