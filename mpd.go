@@ -4,7 +4,6 @@ package mpd
 import (
 	"bytes"
 	"encoding/xml"
-	"github.com/unki2aut/go-xsd-types"
 )
 
 // http://mpeg.chiariglione.org/standards/mpeg-dash
@@ -20,18 +19,18 @@ type MPD struct {
 	XsiSchemaLocation          *string               `xml:"xsi:schemaLocation,attr"`
 	SchemaLocation             *string               `xml:"schemaLocation,attr"`
 	Type                       *string               `xml:"type,attr"`
-	MinimumUpdatePeriod        *xsd.Duration         `xml:"minimumUpdatePeriod,attr"`
-	AvailabilityStartTime      *xsd.DateTime         `xml:"availabilityStartTime,attr"`
-	AvailabilityEndTime        *xsd.DateTime         `xml:"availabilityEndTime,attr"`
-	MediaPresentationDuration  *xsd.Duration         `xml:"mediaPresentationDuration,attr"`
-	MinBufferTime              *xsd.Duration         `xml:"minBufferTime,attr"`
-	SuggestedPresentationDelay *xsd.Duration         `xml:"suggestedPresentationDelay,attr"`
-	TimeShiftBufferDepth       *xsd.Duration         `xml:"timeShiftBufferDepth,attr"`
-	PublishTime                *xsd.DateTime         `xml:"publishTime,attr"`
+	MinimumUpdatePeriod        *string               `xml:"minimumUpdatePeriod,attr"`
+	AvailabilityStartTime      *string               `xml:"availabilityStartTime,attr"`
+	AvailabilityEndTime        *string               `xml:"availabilityEndTime,attr"`
+	MediaPresentationDuration  *string               `xml:"mediaPresentationDuration,attr"`
+	MinBufferTime              *string               `xml:"minBufferTime,attr"`
+	SuggestedPresentationDelay *string               `xml:"suggestedPresentationDelay,attr"`
+	TimeShiftBufferDepth       *string               `xml:"timeShiftBufferDepth,attr"`
+	PublishTime                *string               `xml:"publishTime,attr"`
 	Profiles                   *string               `xml:"profiles,attr"`
 	Id                         *string               `xml:"id,attr"`
-	MaxSegmentDuration         *xsd.Duration         `xml:"maxSegmentDuration,attr"`
-	MaxSubsegmentDuration      *xsd.Duration         `xml:"maxSubsegmentDuration,attr"`
+	MaxSegmentDuration         *string               `xml:"maxSegmentDuration,attr"`
+	MaxSubsegmentDuration      *string               `xml:"maxSubsegmentDuration,attr"`
 	BaseURL                    []*BaseURL            `xml:"BaseURL,omitempty"`
 	Period                     []*Period             `xml:"Period,omitempty"`
 	ProgramInformations        []*ProgramInformation `xml:"ProgramInformation,omitempty"`
@@ -133,14 +132,14 @@ type Subset struct {
 
 // Period represents XSD's PeriodType.
 type Period struct {
-	ID                 *string       `xml:"id,attr"`
-	Start              *xsd.Duration `xml:"start,attr"`
-	Duration           *xsd.Duration `xml:"duration,attr"`
-	Href               *string       `xml:"href,attr"`
-	Actuate            *string       `xml:"actuate,attr"`
-	BitStreamSwitching *bool         `xml:"bitstreamSwitching,attr"`
-	Label              *string       `xml:"label,attr"`
-	BitmovinCustomXml  *string       `xml:"bitmovinCustomXml,attr"`
+	ID                 *string `xml:"id,attr"`
+	Start              *string `xml:"start,attr"`
+	Duration           *string `xml:"duration,attr"`
+	Href               *string `xml:"href,attr"`
+	Actuate            *string `xml:"actuate,attr"`
+	BitStreamSwitching *bool   `xml:"bitstreamSwitching,attr"`
+	Label              *string `xml:"label,attr"`
+	BitmovinCustomXml  *string `xml:"bitmovinCustomXml,attr"`
 
 	AdaptationSets         []*AdaptationSet `xml:"AdaptationSet,omitempty"`
 	BaseURL                []*BaseURL       `xml:"BaseURL,omitempty"`
@@ -160,8 +159,8 @@ type Metrics struct {
 }
 
 type Range struct {
-	StartTime *xsd.Duration `xml:"starttime,attr"`
-	Duration  *xsd.Duration `xml:"duration,attr"`
+	StartTime *string `xml:"starttime,attr"`
+	Duration  *string `xml:"duration,attr"`
 }
 
 // BaseURL represents XSD's BaseURLType.
@@ -175,8 +174,8 @@ type BaseURL struct {
 
 type Label struct {
 	Value string  `xml:",chardata"`
-	ID    *int64  `xml:"id,attr"`
-	Lang  *string `xml:"lang,attr"`
+	ID    *int64  `xml:"id,attr,omitempty"`
+	Lang  *string `xml:"lang,attr,omitempty"`
 }
 
 // ContentComponent represents XSD's ContentComponentType.
@@ -212,8 +211,8 @@ type AdaptationSet struct {
 	MinFrameRate *string `xml:"minFrameRate,attr,omitempty"`
 	MaxFrameRate *string `xml:"maxFrameRate,attr,omitempty"`
 
-	Labels                     []*Label             `xml:"label,omitempty"`
-	FramePackings              []*Descriptor        `xml:"framePacking,omitempty"`
+	Labels                     []*Label             `xml:"Label,omitempty"`
+	FramePackings              []*Descriptor        `xml:"FramePacking,omitempty"`
 	AudioChannelConfigurations []*Descriptor        `xml:"AudioChannelConfiguration,omitempty"`
 	ContentProtections         []*ContentProtection `xml:"ContentProtection,omitempty"`
 	EssentialProperties        []*Descriptor        `xml:"EssentialProperty,omitempty"`
