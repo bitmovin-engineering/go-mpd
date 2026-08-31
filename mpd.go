@@ -12,10 +12,18 @@ import (
 
 // MPD represents root XML element.
 type MPD struct {
-	XMLNS                      *string               `xml:"xmlns,attr"`
-	XMLNSXSI                   *string               `xml:"xmlns:xsi,attr"`
-	Ns2                        *string               `xml:"ns2,attr"`
-	Xsi                        *string               `xml:"xsi,attr"`
+	// Namespaces holds the namespace declarations found on the root element.
+	// encoding/xml cannot round-trip these through struct tags: it reports
+	// them as attributes in the "xmlns" namespace when decoding and mangles
+	// them into "_xmlns:prefix" when encoding, so UnmarshalXML/MarshalXML
+	// carry them instead.
+	//
+	// Losing them corrupts any content that uses a prefix. An scte35: SCTE-35
+	// payload kept verbatim in Event.InnerXML is the case that motivated this:
+	// without its declaration the prefix is unbound and the manifest is no
+	// longer namespace-well-formed.
+	Namespaces []xml.Attr `xml:"-"`
+
 	XsiSchemaLocation          *string               `xml:"xsi:schemaLocation,attr"`
 	SchemaLocation             *string               `xml:"schemaLocation,attr"`
 	Type                       *string               `xml:"type,attr"`
@@ -39,18 +47,140 @@ type MPD struct {
 	EssentialProperties        []*Descriptor         `xml:"EssentialProperty,omitempty"`
 	SupplementalProperties     []*Descriptor         `xml:"SupplementalProperty,omitempty"`
 	UtcTimings                 []*UtcTiming          `xml:"UTCTiming,omitempty"`
-	XmlnsCenc                  *string               `xml:"xmlns:cenc,attr"`
-	Cenc                       *string               `xml:"cenc,attr"`
-	Mspr                       *string               `xml:"mspr,attr"`
-	XmlnsMspr                  *string               `xml:"xmlns:mspr,attr"`
-	Mas                        *string               `xml:"mas,attr"`
-	XmlnsMas                   *string               `xml:"xmlns:mas,attr"`
 }
 
 // Do not try to use encoding.TextMarshaler and encoding.TextUnmarshaler:
 // https://github.com/golang/go/issues/6859#issuecomment-118890463
 
 // Encode generates MPD XML.
+// Namespace declarations have to be carried by hand. encoding/xml reports them
+// as attributes in the "xmlns" namespace when decoding and mangles them into
+// "_xmlns:prefix" when encoding, so struct tags cannot round-trip them.
+//
+// Every element between the root and Event content needs this, not just the
+// root: Event.InnerXML keeps prefixed children verbatim, so a declaration on
+// any ancestor that goes missing leaves those prefixes unbound and the
+// manifest no longer namespace-well-formed. Each element re-emits exactly the
+// declarations it carried, which preserves the original scoping.
+
+// UnmarshalXML decodes the MPD and keeps its namespace declarations.
+func (m *MPD) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	// plain drops the methods so DecodeElement does not recurse.
+	type plain MPD
+
+	if err := d.DecodeElement((*plain)(m), &start); err != nil {
+		return err
+	}
+
+	m.Namespaces = namespaceDeclarations(start.Attr)
+
+	return nil
+}
+
+// MarshalXML encodes the MPD and restores its namespace declarations.
+func (m *MPD) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	type plain MPD
+
+	return e.EncodeElement((*plain)(m), withNamespaces(start, m.Namespaces))
+}
+
+// UnmarshalXML decodes the Period and keeps its namespace declarations.
+func (p *Period) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	type plain Period
+
+	if err := d.DecodeElement((*plain)(p), &start); err != nil {
+		return err
+	}
+
+	p.Namespaces = namespaceDeclarations(start.Attr)
+
+	return nil
+}
+
+// MarshalXML encodes the Period and restores its namespace declarations.
+func (p *Period) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	type plain Period
+
+	return e.EncodeElement((*plain)(p), withNamespaces(start, p.Namespaces))
+}
+
+// UnmarshalXML decodes the EventStream and keeps its namespace declarations.
+func (s *EventStream) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	type plain EventStream
+
+	if err := d.DecodeElement((*plain)(s), &start); err != nil {
+		return err
+	}
+
+	s.Namespaces = namespaceDeclarations(start.Attr)
+
+	return nil
+}
+
+// MarshalXML encodes the EventStream and restores its namespace declarations.
+func (s *EventStream) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	type plain EventStream
+
+	return e.EncodeElement((*plain)(s), withNamespaces(start, s.Namespaces))
+}
+
+// UnmarshalXML decodes the Event and keeps its namespace declarations, which
+// are often the ones its InnerXML payload depends on.
+func (v *Event) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	type plain Event
+
+	if err := d.DecodeElement((*plain)(v), &start); err != nil {
+		return err
+	}
+
+	v.Namespaces = namespaceDeclarations(start.Attr)
+
+	return nil
+}
+
+// MarshalXML encodes the Event and restores its namespace declarations.
+func (v *Event) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	type plain Event
+
+	return e.EncodeElement((*plain)(v), withNamespaces(start, v.Namespaces))
+}
+
+// withNamespaces adds the declarations to a start element. The element name is
+// left alone: EventStream, for one, is encoded as both EventStream and
+// InbandEventStream depending on the field it came from.
+func withNamespaces(start xml.StartElement, declarations []xml.Attr) xml.StartElement {
+	start.Attr = append(append([]xml.Attr(nil), start.Attr...), declarations...)
+
+	return start
+}
+
+// namespaceDeclarations picks the xmlns declarations out of a start element's
+// attributes and rewrites them into a form the encoder emits verbatim: writing
+// the whole "xmlns:prefix" as the attribute's local name sidesteps encoding/xml
+// rewriting the prefix.
+func namespaceDeclarations(attrs []xml.Attr) []xml.Attr {
+	var declarations []xml.Attr
+
+	for _, attr := range attrs {
+		switch {
+		case attr.Name.Space == "xmlns":
+			// xmlns:prefix="uri"
+			declarations = append(declarations, xml.Attr{
+				Name:  xml.Name{Local: "xmlns:" + attr.Name.Local},
+				Value: attr.Value,
+			})
+		case attr.Name.Space == "" && attr.Name.Local == "xmlns":
+			// xmlns="uri"
+			declarations = append(declarations, xml.Attr{
+				Name:  xml.Name{Local: "xmlns"},
+				Value: attr.Value,
+			})
+		}
+	}
+
+	return declarations
+}
+
 func (m *MPD) Encode() ([]byte, error) {
 	x := new(bytes.Buffer)
 	e := xml.NewEncoder(x)
@@ -108,7 +238,16 @@ type SegmentList struct {
 }
 
 type Event struct {
-	Value            string  `xml:",chardata"`
+	// Namespaces holds the xmlns declarations carried by this element. A
+	// prefix used inside InnerXML may be declared here rather than higher up,
+	// and dropping the declaration would leave it unbound. See MPD.Namespaces.
+	Namespaces []xml.Attr `xml:"-"`
+
+	// InnerXML holds the element content verbatim. EventType allows arbitrary
+	// element content (xs:any), so this cannot be a chardata field: SCTE-35
+	// payloads such as scte35:SpliceInfoSection are child elements and a
+	// chardata field would silently drop them on decode.
+	InnerXML         string  `xml:",innerxml"`
 	PresentationTime *uint64 `xml:"presentationTime,attr"`
 	Duration         *uint64 `xml:"duration,attr"`
 	ID               *uint64 `xml:"id,attr"`
@@ -116,6 +255,10 @@ type Event struct {
 }
 
 type EventStream struct {
+	// Namespaces holds the xmlns declarations carried by this element, which
+	// may be the ones an Event payload below it relies on. See MPD.Namespaces.
+	Namespaces []xml.Attr `xml:"-"`
+
 	Events      []*Event `xml:"Event,omitempty"`
 	Href        *string  `xml:"href,attr"`
 	Actuate     *string  `xml:"actuate,attr"`
@@ -132,6 +275,10 @@ type Subset struct {
 
 // Period represents XSD's PeriodType.
 type Period struct {
+	// Namespaces holds the xmlns declarations carried by this element, which
+	// may be the ones an Event payload below it relies on. See MPD.Namespaces.
+	Namespaces []xml.Attr `xml:"-"`
+
 	ID                 *string `xml:"id,attr"`
 	Start              *string `xml:"start,attr"`
 	Duration           *string `xml:"duration,attr"`

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" id="ffeaf845-49df-4291-b265-a3300747365a" profiles="urn:hbbtv:dash:profile:isoff-live:2012,urn:mpeg:dash:profile:isoff-live:2011" type="dynamic" availabilityStartTime="2026-08-26T11:04:07.673Z" publishTime="2026-08-31T17:04:52.108Z" minimumUpdatePeriod="P0Y0M0DT0H0M3.840S" minBufferTime="P0Y0M0DT0H0M2.000S" timeShiftBufferDepth="P0Y0M0DT0H3M0.000S">
+  <Period id="39074896-992e-4839-918d-0524a7b9ef2e" start="P0Y0M0DT0H0M0.000S">
+    <EventStream schemeIdUri="urn:scte:scte35:2013:xml" timescale="90000">
+      <Event presentationTime="40814816400" duration="10800000" id="103571352">
+        <scte35:SpliceInfoSection xmlns:scte35="https://www.scte.org/schemas/35" sapType="3" protocolVersion="0" ptsAdjustment="1264863145" tier="4095">
+          <scte35:SpliceInsert spliceEventId="558" spliceEventCancelIndicator="false" outOfNetworkIndicator="true" spliceImmediateFlag="false" uniqueProgramId="1" availNum="46" availsExpected="46">
+            <scte35:Program>
+              <scte35:SpliceTime ptsTime="5190214887"/>
+            </scte35:Program>
+            <scte35:BreakDuration autoReturn="true" duration="10800000"/>
+          </scte35:SpliceInsert>
+        </scte35:SpliceInfoSection>
+      </Event>
+    </EventStream>
+    <AdaptationSet contentType="video" mimeType="video/mp4" segmentAlignment="true" par="16:9" maxWidth="1920" maxHeight="1080" startWithSAP="1">
+      <Role schemeIdUri="urn:mpeg:dash:role:2011" value="main"/>
+      <Representation id="16d48268-d9ad-49b7-8373-40067cfd879e" bandwidth="2400000" width="1920" height="1080" codecs="avc1.640028" sar="1:1" frameRate="25">
+        <SegmentTemplate media="video/1080p2400kbps/segment_$Number$_seg.m4s" startNumber="119199" timescale="25000" initialization="video/1080p2400kbps/init_init.m4s">
+          <SegmentTimeline>
+            <S t="11336832000" d="96000" r="5"/>
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet contentType="audio" mimeType="audio/mp4" segmentAlignment="true" lang="ar" startWithSAP="1">
+      <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
+      <Role schemeIdUri="urn:mpeg:dash:role:2011" value="main"/>
+      <Representation id="79e0937f-cf64-45af-8acf-f53b0c21bdd1" bandwidth="192000" codecs="mp4a.40.2" audioSamplingRate="48000">
+        <SegmentTemplate media="audio1/192kbps/segment_$Number$_seg.m4s" startNumber="119627" timescale="48000" initialization="audio1/192kbps/init_init.m4s">
+          <SegmentTimeline>
+            <S t="21766901760" d="184320" r="4"/>
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>
