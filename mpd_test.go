@@ -270,13 +270,7 @@ func assertPrefixesBound(t *testing.T, document []byte) {
 		switch element := token.(type) {
 		case xml.StartElement:
 			// Declarations take effect on the element that carries them.
-			frame := map[string]bool{}
-			for _, attr := range element.Attr {
-				if attr.Name.Space == "xmlns" || attr.Name.Local == "xmlns" {
-					frame[attr.Value] = true
-				}
-			}
-			scopes = append(scopes, frame)
+			scopes = append(scopes, declaredNamespaces(element.Attr))
 
 			// An unbound prefix is reported verbatim as the namespace, so
 			// anything not matching a declaration in scope means the
@@ -289,6 +283,19 @@ func assertPrefixesBound(t *testing.T, document []byte) {
 			scopes = scopes[:len(scopes)-1]
 		}
 	}
+}
+
+// declaredNamespaces returns the namespace URIs an element declares.
+func declaredNamespaces(attrs []xml.Attr) map[string]bool {
+	declared := map[string]bool{}
+
+	for _, attr := range attrs {
+		if attr.Name.Space == "xmlns" || attr.Name.Local == "xmlns" {
+			declared[attr.Value] = true
+		}
+	}
+
+	return declared
 }
 
 func inScope(scopes []map[string]bool, namespace string) bool {
