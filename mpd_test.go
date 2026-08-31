@@ -253,7 +253,9 @@ func Test_EncodedPrefixesStayBound(t *testing.T) {
 func assertPrefixesBound(t *testing.T, document []byte) {
 	t.Helper()
 
-	declared := map[string]bool{"": true}
+	// One frame per open element, so a declaration goes out of scope with the
+	// element that carried it rather than leaking into later siblings.
+	scopes := []map[string]bool{{"": true}}
 	decoder := xml.NewDecoder(bytes.NewReader(document))
 
 	for {
@@ -265,23 +267,86 @@ func assertPrefixesBound(t *testing.T, document []byte) {
 			t.Fatalf("Failed to re-parse encoded output: %v\n%s", err, document)
 		}
 
-		element, ok := token.(xml.StartElement)
-		if !ok {
-			continue
-		}
-
-		// Declarations take effect on the element that carries them.
-		for _, attr := range element.Attr {
-			if attr.Name.Space == "xmlns" || attr.Name.Local == "xmlns" {
-				declared[attr.Value] = true
+		switch element := token.(type) {
+		case xml.StartElement:
+			// Declarations take effect on the element that carries them.
+			frame := map[string]bool{}
+			for _, attr := range element.Attr {
+				if attr.Name.Space == "xmlns" || attr.Name.Local == "xmlns" {
+					frame[attr.Value] = true
+				}
 			}
-		}
+			scopes = append(scopes, frame)
 
-		// An unbound prefix is reported verbatim as the namespace, so anything
-		// not matching a declared URI means the declaration went missing.
-		if !declared[element.Name.Space] {
-			t.Errorf("element %q uses unbound namespace prefix %q\n%s",
-				element.Name.Local, element.Name.Space, document)
+			// An unbound prefix is reported verbatim as the namespace, so
+			// anything not matching a declaration in scope means the
+			// declaration went missing.
+			if !inScope(scopes, element.Name.Space) {
+				t.Errorf("element %q uses unbound namespace prefix %q\n%s",
+					element.Name.Local, element.Name.Space, document)
+			}
+		case xml.EndElement:
+			scopes = scopes[:len(scopes)-1]
 		}
+	}
+}
+
+func inScope(scopes []map[string]bool, namespace string) bool {
+	for i := len(scopes) - 1; i >= 0; i-- {
+		if scopes[i][namespace] {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Test_AncestorNamespaceDeclarationsPreserved covers declarations placed
+// somewhere between the root and the Event payload. Event.InnerXML keeps
+// prefixed children verbatim, so a declaration dropped from any ancestor
+// leaves those prefixes unbound.
+func Test_AncestorNamespaceDeclarationsPreserved(t *testing.T) {
+	const declaration = ` xmlns:scte35="https://www.scte.org/schemas/35"`
+	const payload = `<scte35:SpliceInfoSection tier="4095"><scte35:SpliceInsert spliceEventId="558"/></scte35:SpliceInfoSection>`
+
+	tests := []struct {
+		name        string
+		mpd         string
+		period      string
+		eventStream string
+		event       string
+	}{
+		{name: "declared on MPD", mpd: declaration},
+		{name: "declared on Period", period: declaration},
+		{name: "declared on EventStream", eventStream: declaration},
+		{name: "declared on Event", event: declaration},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" profiles="urn:mpeg:dash:profile:isoff-live:2011" type="dynamic"` + tt.mpd + `>
+  <Period id="p0"` + tt.period + `>
+    <EventStream schemeIdUri="urn:scte:scte35:2013:xml" timescale="90000"` + tt.eventStream + `>
+      <Event presentationTime="1" id="1"` + tt.event + `>` + payload + `</Event>
+    </EventStream>
+  </Period>
+</MPD>`)
+
+			m := new(MPD)
+			if err := m.Decode(in); err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+
+			obtained, err := m.Encode()
+			if err != nil {
+				t.Fatalf("Encode: %v", err)
+			}
+
+			assert.Contains(t, string(obtained), payload, "SCTE-35 payload lost")
+			assert.Equal(t, 1, strings.Count(string(obtained), `xmlns:scte35="https://www.scte.org/schemas/35"`),
+				"expected the declaration exactly once in:\n%s", obtained)
+			assertPrefixesBound(t, obtained)
+		})
 	}
 }
