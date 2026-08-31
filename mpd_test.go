@@ -250,62 +250,124 @@ func Test_EncodedPrefixesStayBound(t *testing.T) {
 	}
 }
 
+// assertPrefixesBound fails when the document uses a namespace prefix with no
+// declaration in scope, on an element or on an attribute.
+//
+// This walks RawToken rather than Token deliberately. Token resolves a bound
+// prefix to its URI but leaves an unbound one verbatim, so a check keyed on the
+// resolved value cannot tell the two apart: in <root xmlns:a="b"><b:child/></root>
+// the declared URI and the undeclared prefix are both "b" and the document
+// looks fine. RawToken reports prefixes as written, so declarations can be
+// tracked by prefix name instead.
 func assertPrefixesBound(t *testing.T, document []byte) {
 	t.Helper()
 
+	unbound, err := unboundPrefixes(document)
+	if err != nil {
+		t.Fatalf("Failed to re-parse encoded output: %v\n%s", err, document)
+	}
+
+	for _, problem := range unbound {
+		t.Errorf("%s\n%s", problem, document)
+	}
+}
+
+// unboundPrefixes reports every namespace prefix used without a declaration in
+// scope, on an element or on an attribute.
+//
+// This walks RawToken rather than Token deliberately. Token resolves a bound
+// prefix to its URI but leaves an unbound one verbatim, so a check keyed on the
+// resolved value cannot tell the two apart: in <root xmlns:a="b"><b:child/></root>
+// the declared URI and the undeclared prefix are both "b" and the document
+// looks fine. RawToken reports prefixes as written, so declarations can be
+// tracked by prefix name instead.
+func unboundPrefixes(document []byte) ([]string, error) {
+	var unbound []string
+
 	// One frame per open element, so a declaration goes out of scope with the
-	// element that carried it rather than leaking into later siblings.
-	scopes := []map[string]bool{{"": true}}
+	// element that carried it rather than leaking into later siblings. The
+	// empty prefix needs no declaration and xml is bound implicitly.
+	scopes := []map[string]bool{{"": true, "xml": true}}
 	decoder := xml.NewDecoder(bytes.NewReader(document))
 
 	for {
-		token, err := decoder.Token()
+		token, err := decoder.RawToken()
 		if err == io.EOF {
-			return
+			return unbound, nil
 		}
 		if err != nil {
-			t.Fatalf("Failed to re-parse encoded output: %v\n%s", err, document)
+			return nil, err
 		}
 
 		switch element := token.(type) {
 		case xml.StartElement:
 			// Declarations take effect on the element that carries them.
-			scopes = append(scopes, declaredNamespaces(element.Attr))
-
-			// An unbound prefix is reported verbatim as the namespace, so
-			// anything not matching a declaration in scope means the
-			// declaration went missing.
-			if !inScope(scopes, element.Name.Space) {
-				t.Errorf("element %q uses unbound namespace prefix %q\n%s",
-					element.Name.Local, element.Name.Space, document)
-			}
+			scopes = append(scopes, declaredPrefixes(element.Attr))
+			unbound = append(unbound, elementUnboundPrefixes(scopes, element)...)
 		case xml.EndElement:
-			scopes = scopes[:len(scopes)-1]
+			scopes = popScope(scopes)
 		}
 	}
 }
 
-// declaredNamespaces returns the namespace URIs an element declares.
-func declaredNamespaces(attrs []xml.Attr) map[string]bool {
+func elementUnboundPrefixes(scopes []map[string]bool, element xml.StartElement) []string {
+	var unbound []string
+
+	if !prefixInScope(scopes, element.Name.Space) {
+		unbound = append(unbound, fmt.Sprintf("element %q uses unbound namespace prefix %q",
+			element.Name.Local, element.Name.Space))
+	}
+
+	for _, attr := range element.Attr {
+		if isNamespaceDeclaration(attr) {
+			continue
+		}
+
+		if !prefixInScope(scopes, attr.Name.Space) {
+			unbound = append(unbound, fmt.Sprintf("attribute %q on element %q uses unbound namespace prefix %q",
+				attr.Name.Local, element.Name.Local, attr.Name.Space))
+		}
+	}
+
+	return unbound
+}
+
+// declaredPrefixes returns the prefixes an element declares. RawToken reports
+// xmlns:prefix="uri" as an attribute named prefix in the xmlns namespace.
+func declaredPrefixes(attrs []xml.Attr) map[string]bool {
 	declared := map[string]bool{}
 
 	for _, attr := range attrs {
-		if attr.Name.Space == "xmlns" || attr.Name.Local == "xmlns" {
-			declared[attr.Value] = true
+		if attr.Name.Space == "xmlns" {
+			declared[attr.Name.Local] = true
 		}
 	}
 
 	return declared
 }
 
-func inScope(scopes []map[string]bool, namespace string) bool {
+func isNamespaceDeclaration(attr xml.Attr) bool {
+	return attr.Name.Space == "xmlns" || (attr.Name.Space == "" && attr.Name.Local == "xmlns")
+}
+
+func prefixInScope(scopes []map[string]bool, prefix string) bool {
 	for i := len(scopes) - 1; i >= 0; i-- {
-		if scopes[i][namespace] {
+		if scopes[i][prefix] {
 			return true
 		}
 	}
 
 	return false
+}
+
+// popScope keeps the root frame, since RawToken does not check that start and
+// end elements match.
+func popScope(scopes []map[string]bool) []map[string]bool {
+	if len(scopes) == 1 {
+		return scopes
+	}
+
+	return scopes[:len(scopes)-1]
 }
 
 // Test_AncestorNamespaceDeclarationsPreserved covers declarations placed
@@ -354,6 +416,68 @@ func Test_AncestorNamespaceDeclarationsPreserved(t *testing.T) {
 			assert.Equal(t, 1, strings.Count(string(obtained), `xmlns:scte35="https://www.scte.org/schemas/35"`),
 				"expected the declaration exactly once in:\n%s", obtained)
 			assertPrefixesBound(t, obtained)
+		})
+	}
+}
+
+// Test_UnboundPrefixes covers the guard the namespace tests lean on. It has to
+// agree with a namespace-aware parser, including on documents where the
+// resolved-URI shortcut would be fooled.
+func Test_UnboundPrefixes(t *testing.T) {
+	tests := []struct {
+		name     string
+		document string
+		want     int
+	}{
+		{
+			name:     "no prefixes at all",
+			document: `<MPD xmlns="urn:mpeg:dash:schema:mpd:2011"><Period id="p0"/></MPD>`,
+		},
+		{
+			name:     "declared and used",
+			document: `<MPD xmlns="urn:d" xmlns:scte35="urn:s"><Period scte35:x="1"><scte35:Signal/></Period></MPD>`,
+		},
+		{
+			name:     "xml prefix needs no declaration",
+			document: `<MPD xmlns="urn:d"><Period xml:lang="en"/></MPD>`,
+		},
+		{
+			name:     "unbound element prefix",
+			document: `<MPD xmlns="urn:d"><scte35:Signal/></MPD>`,
+			want:     1,
+		},
+		{
+			name:     "unbound attribute prefix",
+			document: `<MPD xmlns="urn:d"><Period xlink:href="x"/></MPD>`,
+			want:     1,
+		},
+		{
+			name: "prefix matching a declared uri",
+			// Token would resolve the declaration to "b" and report the
+			// undeclared prefix as "b" too, so the two become
+			// indistinguishable. RawToken keeps them apart.
+			document: `<MPD xmlns:a="b"><b:child/></MPD>`,
+			want:     1,
+		},
+		{
+			name:     "declaration does not leak to a sibling",
+			document: `<MPD xmlns="urn:d"><Period xmlns:a="urn:a"><a:X/></Period><Period><a:Y/></Period></MPD>`,
+			want:     1,
+		},
+		{
+			name:     "declaration reaches a descendant",
+			document: `<MPD xmlns="urn:d" xmlns:a="urn:a"><Period><EventStream><a:X/></EventStream></Period></MPD>`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			unbound, err := unboundPrefixes([]byte(tt.document))
+			if err != nil {
+				t.Fatalf("unboundPrefixes: %v", err)
+			}
+
+			assert.Len(t, unbound, tt.want, "got %v", unbound)
 		})
 	}
 }
