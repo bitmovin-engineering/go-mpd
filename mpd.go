@@ -12,10 +12,18 @@ import (
 
 // MPD represents root XML element.
 type MPD struct {
-	XMLNS                      *string               `xml:"xmlns,attr"`
-	XMLNSXSI                   *string               `xml:"xmlns:xsi,attr"`
-	Ns2                        *string               `xml:"ns2,attr"`
-	Xsi                        *string               `xml:"xsi,attr"`
+	// Namespaces holds the namespace declarations found on the root element.
+	// encoding/xml cannot round-trip these through struct tags: it reports
+	// them as attributes in the "xmlns" namespace when decoding and mangles
+	// them into "_xmlns:prefix" when encoding, so UnmarshalXML/MarshalXML
+	// carry them instead.
+	//
+	// Losing them corrupts any content that uses a prefix. An scte35: SCTE-35
+	// payload kept verbatim in Event.InnerXML is the case that motivated this:
+	// without its declaration the prefix is unbound and the manifest is no
+	// longer namespace-well-formed.
+	Namespaces []xml.Attr `xml:"-"`
+
 	XsiSchemaLocation          *string               `xml:"xsi:schemaLocation,attr"`
 	SchemaLocation             *string               `xml:"schemaLocation,attr"`
 	Type                       *string               `xml:"type,attr"`
@@ -39,18 +47,64 @@ type MPD struct {
 	EssentialProperties        []*Descriptor         `xml:"EssentialProperty,omitempty"`
 	SupplementalProperties     []*Descriptor         `xml:"SupplementalProperty,omitempty"`
 	UtcTimings                 []*UtcTiming          `xml:"UTCTiming,omitempty"`
-	XmlnsCenc                  *string               `xml:"xmlns:cenc,attr"`
-	Cenc                       *string               `xml:"cenc,attr"`
-	Mspr                       *string               `xml:"mspr,attr"`
-	XmlnsMspr                  *string               `xml:"xmlns:mspr,attr"`
-	Mas                        *string               `xml:"mas,attr"`
-	XmlnsMas                   *string               `xml:"xmlns:mas,attr"`
 }
 
 // Do not try to use encoding.TextMarshaler and encoding.TextUnmarshaler:
 // https://github.com/golang/go/issues/6859#issuecomment-118890463
 
 // Encode generates MPD XML.
+// UnmarshalXML decodes the MPD and keeps the root namespace declarations,
+// which the struct tags cannot represent.
+func (m *MPD) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	// plain drops the methods on MPD so DecodeElement does not recurse.
+	type plain MPD
+
+	if err := d.DecodeElement((*plain)(m), &start); err != nil {
+		return err
+	}
+
+	m.Namespaces = namespaceDeclarations(start.Attr)
+
+	return nil
+}
+
+// MarshalXML encodes the MPD and restores the root namespace declarations.
+func (m *MPD) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	type plain MPD
+
+	start.Name = xml.Name{Local: "MPD"}
+	start.Attr = append(append([]xml.Attr(nil), start.Attr...), m.Namespaces...)
+
+	return e.EncodeElement((*plain)(m), start)
+}
+
+// namespaceDeclarations picks the xmlns declarations out of a start element's
+// attributes and rewrites them into a form the encoder emits verbatim: writing
+// the whole "xmlns:prefix" as the attribute's local name sidesteps encoding/xml
+// rewriting the prefix.
+func namespaceDeclarations(attrs []xml.Attr) []xml.Attr {
+	var declarations []xml.Attr
+
+	for _, attr := range attrs {
+		switch {
+		case attr.Name.Space == "xmlns":
+			// xmlns:prefix="uri"
+			declarations = append(declarations, xml.Attr{
+				Name:  xml.Name{Local: "xmlns:" + attr.Name.Local},
+				Value: attr.Value,
+			})
+		case attr.Name.Space == "" && attr.Name.Local == "xmlns":
+			// xmlns="uri"
+			declarations = append(declarations, xml.Attr{
+				Name:  xml.Name{Local: "xmlns"},
+				Value: attr.Value,
+			})
+		}
+	}
+
+	return declarations
+}
+
 func (m *MPD) Encode() ([]byte, error) {
 	x := new(bytes.Buffer)
 	e := xml.NewEncoder(x)

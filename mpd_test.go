@@ -1,8 +1,11 @@
 package mpd
 
 import (
+	"bytes"
+	"encoding/xml"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -143,4 +146,142 @@ func soleEventContent(t *testing.T, m *MPD) string {
 	}
 
 	return events[0].InnerXML
+}
+
+// Test_RootNamespaceDeclarationsPreserved guards the root xmlns declarations.
+// encoding/xml drops or mangles them by default, which leaves any prefix used
+// further down the manifest unbound.
+func Test_RootNamespaceDeclarationsPreserved(t *testing.T) {
+	tests := []struct {
+		name         string
+		rootAttrs    string
+		wantDeclared []string
+	}{
+		{
+			name:         "default namespace only",
+			rootAttrs:    `xmlns="urn:mpeg:dash:schema:mpd:2011"`,
+			wantDeclared: []string{`xmlns="urn:mpeg:dash:schema:mpd:2011"`},
+		},
+		{
+			name:      "default and scte35",
+			rootAttrs: `xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:scte35="https://www.scte.org/schemas/35"`,
+			wantDeclared: []string{
+				`xmlns="urn:mpeg:dash:schema:mpd:2011"`,
+				`xmlns:scte35="https://www.scte.org/schemas/35"`,
+			},
+		},
+		{
+			name:      "drm prefixes",
+			rootAttrs: `xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:cenc="urn:mpeg:cenc:2013" xmlns:mspr="urn:microsoft:playready" xmlns:mas="urn:marlin:mas:1-0:services:schemas:mpd"`,
+			wantDeclared: []string{
+				`xmlns:cenc="urn:mpeg:cenc:2013"`,
+				`xmlns:mspr="urn:microsoft:playready"`,
+				`xmlns:mas="urn:marlin:mas:1-0:services:schemas:mpd"`,
+			},
+		},
+		{
+			name:      "xlink and xsi",
+			rootAttrs: `xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:ns2="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"`,
+			wantDeclared: []string{
+				`xmlns:ns2="http://www.w3.org/1999/xlink"`,
+				`xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<MPD ` + tt.rootAttrs + ` profiles="urn:mpeg:dash:profile:isoff-live:2011" type="dynamic">
+  <Period id="p0"/>
+</MPD>`)
+
+			m := new(MPD)
+			if err := m.Decode(in); err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+
+			obtained, err := m.Encode()
+			if err != nil {
+				t.Fatalf("Encode: %v", err)
+			}
+
+			for _, declaration := range tt.wantDeclared {
+				assert.Equal(t, 1, strings.Count(string(obtained), declaration),
+					"expected %s exactly once in:\n%s", declaration, obtained)
+			}
+		})
+	}
+}
+
+// Test_EncodedPrefixesStayBound re-parses everything in testdata after a round
+// trip and fails on any element whose prefix has no declaration in scope.
+// encoding/xml does not reject unbound prefixes, it reports the raw prefix as
+// the namespace, so this walks the tokens rather than relying on a decode error.
+func Test_EncodedPrefixesStayBound(t *testing.T) {
+	files, err := os.ReadDir("testdata")
+	if err != nil {
+		t.Fatalf("Failed to read testdata directory: %v", err)
+	}
+
+	for _, file := range files {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".mpd") {
+			continue
+		}
+
+		t.Run(file.Name(), func(t *testing.T) {
+			source, err := os.ReadFile("testdata/" + file.Name())
+			if err != nil {
+				t.Fatalf("Failed to read file %s: %v", file.Name(), err)
+			}
+
+			m := new(MPD)
+			if err := m.Decode(source); err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+
+			obtained, err := m.Encode()
+			if err != nil {
+				t.Fatalf("Encode: %v", err)
+			}
+
+			assertPrefixesBound(t, obtained)
+		})
+	}
+}
+
+func assertPrefixesBound(t *testing.T, document []byte) {
+	t.Helper()
+
+	declared := map[string]bool{"": true}
+	decoder := xml.NewDecoder(bytes.NewReader(document))
+
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			t.Fatalf("Failed to re-parse encoded output: %v\n%s", err, document)
+		}
+
+		element, ok := token.(xml.StartElement)
+		if !ok {
+			continue
+		}
+
+		// Declarations take effect on the element that carries them.
+		for _, attr := range element.Attr {
+			if attr.Name.Space == "xmlns" || attr.Name.Local == "xmlns" {
+				declared[attr.Value] = true
+			}
+		}
+
+		// An unbound prefix is reported verbatim as the namespace, so anything
+		// not matching a declared URI means the declaration went missing.
+		if !declared[element.Name.Space] {
+			t.Errorf("element %q uses unbound namespace prefix %q\n%s",
+				element.Name.Local, element.Name.Space, document)
+		}
+	}
 }
