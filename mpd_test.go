@@ -106,18 +106,41 @@ func Test_EventInnerXMLRoundTrip(t *testing.T) {
 			if err := m.Decode(in); err != nil {
 				t.Fatalf("Decode: %v", err)
 			}
-
-			events := m.Period[0].EventStreams[0].Events
-			if len(events) != 1 {
-				t.Fatalf("expected 1 Event, got %d", len(events))
-			}
-			assert.Equal(t, tt.content, events[0].InnerXML, "Event content lost on decode")
+			assert.Equal(t, tt.content, soleEventContent(t, m), "Event content lost on decode")
 
 			obtained, err := m.Encode()
 			if err != nil {
 				t.Fatalf("Encode: %v", err)
 			}
-			assert.Contains(t, string(obtained), tt.content, "Event content lost on encode")
+
+			// Re-decode rather than substring match: Contains is a no-op for
+			// the empty case, and would not notice the payload being escaped
+			// into chardata on the way out.
+			reDecoded := new(MPD)
+			if err := reDecoded.Decode(obtained); err != nil {
+				t.Fatalf("Decode of encoded output: %v\n%s", err, obtained)
+			}
+			assert.Equal(t, tt.content, soleEventContent(t, reDecoded), "Event content lost on encode:\n%s", obtained)
 		})
 	}
+}
+
+// soleEventContent returns the InnerXML of the single Event the test manifests
+// carry, failing rather than panicking when the shape is not what we expect.
+func soleEventContent(t *testing.T, m *MPD) string {
+	t.Helper()
+
+	if len(m.Period) != 1 {
+		t.Fatalf("expected 1 Period, got %d", len(m.Period))
+	}
+	if len(m.Period[0].EventStreams) != 1 {
+		t.Fatalf("expected 1 EventStream, got %d", len(m.Period[0].EventStreams))
+	}
+
+	events := m.Period[0].EventStreams[0].Events
+	if len(events) != 1 {
+		t.Fatalf("expected 1 Event, got %d", len(events))
+	}
+
+	return events[0].InnerXML
 }
