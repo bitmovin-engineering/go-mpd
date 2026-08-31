@@ -108,7 +108,11 @@ type SegmentList struct {
 }
 
 type Event struct {
-	Value            string  `xml:",chardata"`
+	// InnerXML holds the element content verbatim. EventType allows arbitrary
+	// element content (xs:any), so this cannot be a chardata field: SCTE-35
+	// payloads such as scte35:SpliceInfoSection are child elements and a
+	// chardata field would silently drop them on decode.
+	InnerXML         string  `xml:",innerxml"`
 	PresentationTime *uint64 `xml:"presentationTime,attr"`
 	Duration         *uint64 `xml:"duration,attr"`
 	ID               *uint64 `xml:"id,attr"`

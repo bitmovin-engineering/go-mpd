@@ -60,3 +60,64 @@ func Test_UnmarshalMarshalAllFiles(t *testing.T) {
 		}
 	}
 }
+
+// Test_EventInnerXMLRoundTrip guards the Event element content against being
+// dropped. EventType permits arbitrary element content, so anything other than
+// a verbatim round trip silently corrupts SCTE-35 signalling.
+func Test_EventInnerXMLRoundTrip(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+	}{
+		{
+			name:    "scte35 xml payload",
+			content: `<scte35:SpliceInfoSection xmlns:scte35="https://www.scte.org/schemas/35" tier="4095"><scte35:SpliceInsert spliceEventId="558" outOfNetworkIndicator="true"><scte35:Program><scte35:SpliceTime ptsTime="5190214887"/></scte35:Program></scte35:SpliceInsert></scte35:SpliceInfoSection>`,
+		},
+		{
+			name:    "scte35 binary payload",
+			content: `<Signal xmlns="urn:scte:scte35:2013:xml"><Binary>/DAlAAAAAAAAAP/wFAUAAAABf+/+AA==</Binary></Signal>`,
+		},
+		{
+			name:    "base64 chardata",
+			content: `SGVsbG8gJiB3b3JsZA==`,
+		},
+		{
+			name:    "escaped chardata",
+			content: `text with &amp; escaped &lt;chars&gt;`,
+		},
+		{
+			name:    "empty",
+			content: ``,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" profiles="urn:mpeg:dash:profile:isoff-live:2011" type="dynamic">
+  <Period id="p0">
+    <EventStream schemeIdUri="urn:scte:scte35:2013:xml" timescale="90000">
+      <Event presentationTime="40814816400" duration="10800000" id="103571352">` + tt.content + `</Event>
+    </EventStream>
+  </Period>
+</MPD>`)
+
+			m := new(MPD)
+			if err := m.Decode(in); err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+
+			events := m.Period[0].EventStreams[0].Events
+			if len(events) != 1 {
+				t.Fatalf("expected 1 Event, got %d", len(events))
+			}
+			assert.Equal(t, tt.content, events[0].InnerXML, "Event content lost on decode")
+
+			obtained, err := m.Encode()
+			if err != nil {
+				t.Fatalf("Encode: %v", err)
+			}
+			assert.Contains(t, string(obtained), tt.content, "Event content lost on encode")
+		})
+	}
+}
