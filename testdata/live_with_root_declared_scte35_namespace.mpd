@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:scte35="https://www.scte.org/schemas/35" id="b1c0f6a2-3d18-4c77-9f21-6de0b4c9a7e5" profiles="urn:mpeg:dash:profile:isoff-live:2011" type="dynamic" availabilityStartTime="2026-08-26T11:04:07.673Z" publishTime="2026-08-31T17:04:52.108Z" minimumUpdatePeriod="P0Y0M0DT0H0M3.840S" minBufferTime="P0Y0M0DT0H0M2.000S" timeShiftBufferDepth="P0Y0M0DT0H3M0.000S">
+  <Period id="8f2b41d7-5a90-4e63-b0cc-721ae5f38d94" start="P0Y0M0DT0H0M0.000S">
+    <EventStream schemeIdUri="urn:scte:scte35:2013:xml" timescale="90000">
+      <Event presentationTime="40814816400" duration="10800000" id="103571352">
+        <scte35:SpliceInfoSection sapType="3" protocolVersion="0" ptsAdjustment="1264863145" tier="4095">
+          <scte35:SpliceInsert spliceEventId="558" spliceEventCancelIndicator="false" outOfNetworkIndicator="true" spliceImmediateFlag="false" uniqueProgramId="1" availNum="46" availsExpected="46">
+            <scte35:Program>
+              <scte35:SpliceTime ptsTime="5190214887"/>
+            </scte35:Program>
+            <scte35:BreakDuration autoReturn="true" duration="10800000"/>
+          </scte35:SpliceInsert>
+        </scte35:SpliceInfoSection>
+      </Event>
+    </EventStream>
+    <AdaptationSet contentType="video" mimeType="video/mp4" segmentAlignment="true" par="16:9" maxWidth="1920" maxHeight="1080" startWithSAP="1">
+      <Role schemeIdUri="urn:mpeg:dash:role:2011" value="main"/>
+      <Representation id="7c3e9a15-4b82-4d06-a5f9-2e8b17c04d3a" bandwidth="2400000" width="1920" height="1080" codecs="avc1.640028" sar="1:1" frameRate="25">
+        <SegmentTemplate media="video/1080p2400kbps/segment_$Number$_seg.m4s" startNumber="119199" timescale="25000" initialization="video/1080p2400kbps/init_init.m4s">
+          <SegmentTimeline>
+            <S t="11336832000" d="96000" r="5"/>
+          </SegmentTimeline>
+        </SegmentTemplate>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>
