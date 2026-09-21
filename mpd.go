@@ -4,6 +4,7 @@ package mpd
 import (
 	"bytes"
 	"encoding/xml"
+	"strings"
 )
 
 // http://mpeg.chiariglione.org/standards/mpeg-dash
@@ -145,6 +146,36 @@ func (v *Event) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	return e.EncodeElement((*plain)(v), withNamespaces(start, v.Namespaces))
 }
 
+// UnmarshalXML decodes the ContentProtection and keeps its namespace
+// declarations and qualified attributes.
+func (c *ContentProtection) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	type plain ContentProtection
+
+	if err := d.DecodeElement((*plain)(c), &start); err != nil {
+		return err
+	}
+
+	c.Namespaces = namespaceDeclarations(start.Attr)
+	c.ForeignAttrs = foreignAttributes(start.Attr, c.Namespaces)
+
+	// ForeignAttrs already carries a qualified default_KID.
+	if hasForeignAttr(c.ForeignAttrs, "default_KID") {
+		c.DefaultKID = nil
+	}
+
+	return nil
+}
+
+// MarshalXML encodes the ContentProtection and restores its namespace
+// declarations and qualified attributes.
+func (c *ContentProtection) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	type plain ContentProtection
+
+	start = withNamespaces(start, c.Namespaces)
+
+	return e.EncodeElement((*plain)(c), withNamespaces(start, c.ForeignAttrs))
+}
+
 // withNamespaces adds the declarations to a start element. The element name is
 // left alone: EventStream, for one, is encoded as both EventStream and
 // InbandEventStream depending on the field it came from.
@@ -179,6 +210,78 @@ func namespaceDeclarations(attrs []xml.Attr) []xml.Attr {
 	}
 
 	return declarations
+}
+
+// conventionalPrefixes maps a namespace to the prefix DASH manifests write it
+// with, used when the declaration is not on the element carrying the attribute.
+var conventionalPrefixes = map[string]string{
+	"urn:mpeg:cenc:2013":                        "cenc",
+	"urn:microsoft:playready":                   "mspr",
+	"urn:marlin:mas:1-0:services:schemas:mpd":   "mas",
+	"http://www.w3.org/2001/XMLSchema-instance": "xsi",
+	"http://www.w3.org/1999/xlink":              "ns2",
+	"https://www.scte.org/schemas/35":           "scte35",
+}
+
+// foreignAttributes picks the namespace-qualified attributes out of a start
+// element's attributes, rewritten the way namespaceDeclarations rewrites
+// declarations. Without this a tag such as `xml:"cenc:default_KID,attr"` never
+// matches and the unprefixed field catches the value, dropping the prefix.
+func foreignAttributes(attrs []xml.Attr, declarations []xml.Attr) []xml.Attr {
+	var foreign []xml.Attr
+
+	for _, attr := range attrs {
+		if attr.Name.Space == "" || attr.Name.Space == "xmlns" {
+			continue
+		}
+
+		prefix := prefixFor(attr.Name.Space, declarations)
+		if prefix == "" {
+			continue
+		}
+
+		foreign = append(foreign, xml.Attr{
+			Name:  xml.Name{Local: prefix + ":" + attr.Name.Local},
+			Value: attr.Value,
+		})
+	}
+
+	return foreign
+}
+
+// prefixFor recovers the prefix an attribute was written with, which the
+// decoder replaces with the namespace it resolved to. An unbound prefix is
+// reported as itself and returned unchanged.
+func prefixFor(namespace string, declarations []xml.Attr) string {
+	for _, declaration := range declarations {
+		if declaration.Value == namespace {
+			if prefix, found := strings.CutPrefix(declaration.Name.Local, "xmlns:"); found {
+				return prefix
+			}
+		}
+	}
+
+	if prefix, known := conventionalPrefixes[namespace]; known {
+		return prefix
+	}
+
+	if !strings.ContainsAny(namespace, ":/") {
+		return namespace
+	}
+
+	return ""
+}
+
+// hasForeignAttr reports whether a qualified attribute with this local name is
+// already carried.
+func hasForeignAttr(foreign []xml.Attr, local string) bool {
+	for _, attr := range foreign {
+		if strings.HasSuffix(attr.Name.Local, ":"+local) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (m *MPD) Encode() ([]byte, error) {
@@ -447,18 +550,16 @@ type Representation struct {
 }
 
 type ContentProtection struct {
-	SchemeIDURI         *string             `xml:"schemeIdUri,attr"`
-	Value               *string             `xml:"value,attr"`
-	Cenc                *string             `xml:"cenc,attr"`
-	CencPSSH            *string             `xml:"cenc:pssh,attr"`
-	CencDefaultKID      *string             `xml:"cenc:default_KID,attr"`
-	DefaultKID          *string             `xml:"default_KID,attr"`
-	CencPsshBody        *string             `xml:"cenc:pssh,omitempty"`
-	PsshBody            *Pssh               `xml:"pssh,omitempty"`
-	Pro                 *Pro                `xml:"pro,omitempty"`
-	MsprPro             *string             `xml:"mspr:pro,omitempty"`
-	MarlinContentIds    []*MarlinContentIds `xml:"MarlinContentIds,omitempty"`
-	MasMarlinContentIds []*MarlinContentIds `xml:"mas:MarlinContentIds,omitempty"`
+	// Namespaces and ForeignAttrs carry xmlns:cenc and cenc:default_KID. See
+	// MPD.Namespaces. InnerXML keeps cenc:pssh and mspr:pro children verbatim,
+	// as Event.InnerXML does for SCTE-35 payloads.
+	Namespaces   []xml.Attr `xml:"-"`
+	ForeignAttrs []xml.Attr `xml:"-"`
+	InnerXML     string     `xml:",innerxml"`
+
+	SchemeIDURI *string `xml:"schemeIdUri,attr"`
+	Value       *string `xml:"value,attr"`
+	DefaultKID  *string `xml:"default_KID,attr"`
 }
 
 type MarlinContentIds struct {
