@@ -26,7 +26,6 @@ type MPD struct {
 	Namespaces   []xml.Attr `xml:"-"`
 	ForeignAttrs []xml.Attr `xml:"-"`
 
-	XsiSchemaLocation          *string               `xml:"xsi:schemaLocation,attr"`
 	SchemaLocation             *string               `xml:"schemaLocation,attr"`
 	Type                       *string               `xml:"type,attr"`
 	MinimumUpdatePeriod        *string               `xml:"minimumUpdatePeriod,attr"`
@@ -600,25 +599,6 @@ type ContentProtection struct {
 	SchemeIDURI *string `xml:"schemeIdUri,attr"`
 	Value       *string `xml:"value,attr"`
 	DefaultKID  *string `xml:"default_KID,attr"`
-}
-
-type MarlinContentIds struct {
-	MarlinContentId    *MarlinContentId `xml:"MarlinContentId,omitempty"`
-	MasMarlinContentId *MarlinContentId `xml:"mas:MarlinContentId,omitempty"`
-}
-
-type MarlinContentId struct {
-	Value string `xml:",chardata"`
-}
-
-type Pssh struct {
-	Value string  `xml:",chardata"`
-	Cenc  *string `xml:"cenc,attr"`
-}
-
-type Pro struct {
-	Value string  `xml:",chardata"`
-	Mspr  *string `xml:"mspr,attr"`
 }
 
 // Descriptor represents XSD's DescriptorType.
