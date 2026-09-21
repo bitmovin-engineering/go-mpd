@@ -4,7 +4,7 @@
     <!-- Audio -->
     <AdaptationSet mimeType="audio/mp4" segmentAlignment="true" startWithSAP="1">
       <!-- MPEG Common Encryption -->
-      <ContentProtection cenc:default_KID="90351951-686b-5e1b-a222-439ecec1f12a" schemeIdUri="urn:mpeg:dash:mp4protection:2011" value="cenc"/>
+      <ContentProtection xmlns:cenc="urn:mpeg:cenc:2013" cenc:default_KID="90351951-686b-5e1b-a222-439ecec1f12a" schemeIdUri="urn:mpeg:dash:mp4protection:2011" value="cenc"/>
       <!-- Widevine -->
       <ContentProtection schemeIdUri="urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed">
         <cenc:pssh>AAAARnBzc2gAAAAA7e+LqXnWSs6jyCfc1R0h7QAAACYIARIQkDUZUWhrXhuiIkOezsHxKhoNd2lkZXZpbmVfdGVzdCIBKg==</cenc:pssh>

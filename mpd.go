@@ -75,7 +75,9 @@ func (m *MPD) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	}
 
 	m.Namespaces = namespaceDeclarations(start.Attr)
-	m.ForeignAttrs = foreignAttributes(start.Attr, m.Namespaces)
+	foreign, bindings := foreignAttributes(start.Attr, m.Namespaces)
+	m.ForeignAttrs = foreign
+	m.Namespaces = append(m.Namespaces, bindings...)
 
 	// ForeignAttrs already carries a qualified schemaLocation.
 	if hasForeignAttr(m.ForeignAttrs, "schemaLocation") {
@@ -166,7 +168,9 @@ func (c *ContentProtection) UnmarshalXML(d *xml.Decoder, start xml.StartElement)
 	}
 
 	c.Namespaces = namespaceDeclarations(start.Attr)
-	c.ForeignAttrs = foreignAttributes(start.Attr, c.Namespaces)
+	foreign, bindings := foreignAttributes(start.Attr, c.Namespaces)
+	c.ForeignAttrs = foreign
+	c.Namespaces = append(c.Namespaces, bindings...)
 
 	// ForeignAttrs already carries a qualified default_KID.
 	if hasForeignAttr(c.ForeignAttrs, "default_KID") {
@@ -237,15 +241,19 @@ var conventionalPrefixes = map[string]string{
 // element's attributes, rewritten the way namespaceDeclarations rewrites
 // declarations. Without this a tag such as `xml:"cenc:default_KID,attr"` never
 // matches and the unprefixed field catches the value, dropping the prefix.
-func foreignAttributes(attrs []xml.Attr, declarations []xml.Attr) []xml.Attr {
-	var foreign []xml.Attr
+//
+// The second return holds the declarations needed to bind any prefix taken
+// from conventionalPrefixes. The manifest may declare that namespace under a
+// different prefix, which would leave the one written here unbound.
+func foreignAttributes(attrs []xml.Attr, declarations []xml.Attr) ([]xml.Attr, []xml.Attr) {
+	var foreign, bindings []xml.Attr
 
 	for _, attr := range attrs {
 		if attr.Name.Space == "" || attr.Name.Space == "xmlns" {
 			continue
 		}
 
-		prefix := prefixFor(attr.Name.Space, declarations)
+		prefix, needsBinding := prefixFor(attr.Name.Space, declarations)
 		if prefix == "" {
 			continue
 		}
@@ -254,32 +262,54 @@ func foreignAttributes(attrs []xml.Attr, declarations []xml.Attr) []xml.Attr {
 			Name:  xml.Name{Local: prefix + ":" + attr.Name.Local},
 			Value: attr.Value,
 		})
+
+		if needsBinding && !declaresPrefix(bindings, prefix) {
+			bindings = append(bindings, xml.Attr{
+				Name:  xml.Name{Local: "xmlns:" + prefix},
+				Value: attr.Name.Space,
+			})
+		}
 	}
 
-	return foreign
+	return foreign, bindings
 }
 
 // prefixFor recovers the prefix an attribute was written with, which the
-// decoder replaces with the namespace it resolved to. An unbound prefix is
-// reported as itself and returned unchanged.
-func prefixFor(namespace string, declarations []xml.Attr) string {
+// decoder replaces with the namespace it resolved to. The second return says
+// whether a declaration has to be added to bind the prefix.
+//
+// A prefix that was already unbound in the source is reported by the decoder
+// as itself rather than a namespace, and is returned unchanged: there is no
+// namespace to bind it to, and the output stays faithful to the input.
+func prefixFor(namespace string, declarations []xml.Attr) (string, bool) {
 	for _, declaration := range declarations {
 		if declaration.Value == namespace {
 			if prefix, found := strings.CutPrefix(declaration.Name.Local, "xmlns:"); found {
-				return prefix
+				return prefix, false
 			}
 		}
 	}
 
 	if prefix, known := conventionalPrefixes[namespace]; known {
-		return prefix
+		return prefix, true
 	}
 
 	if !strings.ContainsAny(namespace, ":/") {
-		return namespace
+		return namespace, false
 	}
 
-	return ""
+	return "", false
+}
+
+// declaresPrefix reports whether these declarations already bind the prefix.
+func declaresPrefix(declarations []xml.Attr, prefix string) bool {
+	for _, declaration := range declarations {
+		if declaration.Name.Local == "xmlns:"+prefix {
+			return true
+		}
+	}
+
+	return false
 }
 
 // hasForeignAttr reports whether a qualified attribute with this local name is

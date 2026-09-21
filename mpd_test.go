@@ -512,6 +512,15 @@ func Test_ContentProtectionNamespacesPreserved(t *testing.T) {
 			},
 		},
 		{
+			name:        "declared on the root under a different prefix",
+			rootAttrs:   `xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:c="urn:mpeg:cenc:2013"`,
+			contentProt: `<ContentProtection schemeIdUri="urn:mpeg:dash:mp4protection:2011" value="cenc" c:default_KID="1094055C-B337-4F1D-9DF4-F24835EFF58D"/>`,
+			wantFragments: []string{
+				`cenc:default_KID="1094055C-B337-4F1D-9DF4-F24835EFF58D"`,
+				`xmlns:cenc="urn:mpeg:cenc:2013"`,
+			},
+		},
+		{
 			name:        "pssh and pro children",
 			rootAttrs:   `xmlns="urn:mpeg:dash:schema:mpd:2011"`,
 			contentProt: `<ContentProtection schemeIdUri="urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95"><cenc:pssh xmlns:cenc="urn:mpeg:cenc:2013">AAAA</cenc:pssh><mspr:pro xmlns:mspr="urn:microsoft:playready">BBBB</mspr:pro></ContentProtection>`,
@@ -557,6 +566,8 @@ func Test_ContentProtectionNamespacesPreserved(t *testing.T) {
 
 			assert.NotContains(t, string(out), ` cenc="`)
 			assert.NotContains(t, string(out), ` mspr="`)
+
+			assertPrefixesBound(t, out)
 		})
 	}
 }
