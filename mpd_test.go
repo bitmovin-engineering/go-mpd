@@ -560,3 +560,46 @@ func Test_ContentProtectionNamespacesPreserved(t *testing.T) {
 		})
 	}
 }
+
+// Test_RootQualifiedAttributesPreserved covers the same defect on the root,
+// where xsi:schemaLocation was emitted as a bare schemaLocation.
+func Test_RootQualifiedAttributesPreserved(t *testing.T) {
+	tests := []struct {
+		name      string
+		rootAttrs string
+		want      string
+	}{
+		{
+			name:      "qualified schemaLocation keeps its prefix",
+			rootAttrs: `xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd"`,
+			want:      `xsi:schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd"`,
+		},
+		{
+			name:      "unqualified schemaLocation is left alone",
+			rootAttrs: `xmlns="urn:mpeg:dash:schema:mpd:2011" schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd"`,
+			want:      `schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<MPD ` + tt.rootAttrs + ` profiles="urn:mpeg:dash:profile:isoff-live:2011" type="static">
+  <Period id="p0"/>
+</MPD>`)
+
+			m := new(MPD)
+			if err := m.Decode(in); err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+
+			out, err := m.Encode()
+			if err != nil {
+				t.Fatalf("Encode() error = %v", err)
+			}
+
+			assert.Contains(t, string(out), tt.want)
+			assert.Equal(t, 1, strings.Count(string(out), `schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd"`))
+		})
+	}
+}

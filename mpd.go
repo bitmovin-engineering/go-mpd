@@ -23,7 +23,8 @@ type MPD struct {
 	// payload kept verbatim in Event.InnerXML is the case that motivated this:
 	// without its declaration the prefix is unbound and the manifest is no
 	// longer namespace-well-formed.
-	Namespaces []xml.Attr `xml:"-"`
+	Namespaces   []xml.Attr `xml:"-"`
+	ForeignAttrs []xml.Attr `xml:"-"`
 
 	XsiSchemaLocation          *string               `xml:"xsi:schemaLocation,attr"`
 	SchemaLocation             *string               `xml:"schemaLocation,attr"`
@@ -74,15 +75,24 @@ func (m *MPD) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	}
 
 	m.Namespaces = namespaceDeclarations(start.Attr)
+	m.ForeignAttrs = foreignAttributes(start.Attr, m.Namespaces)
+
+	// ForeignAttrs already carries a qualified schemaLocation.
+	if hasForeignAttr(m.ForeignAttrs, "schemaLocation") {
+		m.SchemaLocation = nil
+	}
 
 	return nil
 }
 
-// MarshalXML encodes the MPD and restores its namespace declarations.
+// MarshalXML encodes the MPD and restores its namespace declarations and
+// qualified attributes.
 func (m *MPD) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	type plain MPD
 
-	return e.EncodeElement((*plain)(m), withNamespaces(start, m.Namespaces))
+	start = withNamespaces(start, m.Namespaces)
+
+	return e.EncodeElement((*plain)(m), withNamespaces(start, m.ForeignAttrs))
 }
 
 // UnmarshalXML decodes the Period and keeps its namespace declarations.
