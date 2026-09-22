@@ -482,3 +482,135 @@ func Test_UnboundPrefixes(t *testing.T) {
 		})
 	}
 }
+
+// Test_ContentProtectionNamespacesPreserved guards the DRM signalling on
+// ContentProtection. xmlns:cenc was re-emitted as a plain cenc attribute and
+// cenc:default_KID lost its prefix, leaving players unable to find the key ID.
+func Test_ContentProtectionNamespacesPreserved(t *testing.T) {
+	tests := []struct {
+		name          string
+		rootAttrs     string
+		contentProt   string
+		wantFragments []string
+	}{
+		{
+			name:        "declared on the element",
+			rootAttrs:   `xmlns="urn:mpeg:dash:schema:mpd:2011"`,
+			contentProt: `<ContentProtection schemeIdUri="urn:mpeg:dash:mp4protection:2011" value="cenc" xmlns:cenc="urn:mpeg:cenc:2013" cenc:default_KID="1094055C-B337-4F1D-9DF4-F24835EFF58D"/>`,
+			wantFragments: []string{
+				`xmlns:cenc="urn:mpeg:cenc:2013"`,
+				`cenc:default_KID="1094055C-B337-4F1D-9DF4-F24835EFF58D"`,
+			},
+		},
+		{
+			name:        "declared on the root",
+			rootAttrs:   `xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:cenc="urn:mpeg:cenc:2013"`,
+			contentProt: `<ContentProtection schemeIdUri="urn:mpeg:dash:mp4protection:2011" value="cenc" cenc:default_KID="1094055C-B337-4F1D-9DF4-F24835EFF58D"/>`,
+			wantFragments: []string{
+				`xmlns:cenc="urn:mpeg:cenc:2013"`,
+				`cenc:default_KID="1094055C-B337-4F1D-9DF4-F24835EFF58D"`,
+			},
+		},
+		{
+			name:        "declared on the root under a different prefix",
+			rootAttrs:   `xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:c="urn:mpeg:cenc:2013"`,
+			contentProt: `<ContentProtection schemeIdUri="urn:mpeg:dash:mp4protection:2011" value="cenc" c:default_KID="1094055C-B337-4F1D-9DF4-F24835EFF58D"/>`,
+			wantFragments: []string{
+				`cenc:default_KID="1094055C-B337-4F1D-9DF4-F24835EFF58D"`,
+				`xmlns:cenc="urn:mpeg:cenc:2013"`,
+			},
+		},
+		{
+			name:        "pssh and pro children",
+			rootAttrs:   `xmlns="urn:mpeg:dash:schema:mpd:2011"`,
+			contentProt: `<ContentProtection schemeIdUri="urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95"><cenc:pssh xmlns:cenc="urn:mpeg:cenc:2013">AAAA</cenc:pssh><mspr:pro xmlns:mspr="urn:microsoft:playready">BBBB</mspr:pro></ContentProtection>`,
+			wantFragments: []string{
+				`<cenc:pssh xmlns:cenc="urn:mpeg:cenc:2013">AAAA</cenc:pssh>`,
+				`<mspr:pro xmlns:mspr="urn:microsoft:playready">BBBB</mspr:pro>`,
+			},
+		},
+		{
+			name:        "unprefixed default_KID is left alone",
+			rootAttrs:   `xmlns="urn:mpeg:dash:schema:mpd:2011"`,
+			contentProt: `<ContentProtection schemeIdUri="urn:mpeg:dash:mp4protection:2011" value="cenc" default_KID="1094055C-B337-4F1D-9DF4-F24835EFF58D"/>`,
+			wantFragments: []string{
+				`default_KID="1094055C-B337-4F1D-9DF4-F24835EFF58D"`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<MPD ` + tt.rootAttrs + ` profiles="urn:mpeg:dash:profile:isoff-live:2011" type="static">
+  <Period id="p0">
+    <AdaptationSet mimeType="video/mp4">
+      ` + tt.contentProt + `
+    </AdaptationSet>
+  </Period>
+</MPD>`)
+
+			m := new(MPD)
+			if err := m.Decode(in); err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+
+			out, err := m.Encode()
+			if err != nil {
+				t.Fatalf("Encode() error = %v", err)
+			}
+
+			for _, fragment := range tt.wantFragments {
+				assert.Contains(t, string(out), fragment)
+			}
+
+			assert.NotContains(t, string(out), ` cenc="`)
+			assert.NotContains(t, string(out), ` mspr="`)
+
+			assertPrefixesBound(t, out)
+		})
+	}
+}
+
+// Test_RootQualifiedAttributesPreserved covers the same defect on the root,
+// where xsi:schemaLocation was emitted as a bare schemaLocation.
+func Test_RootQualifiedAttributesPreserved(t *testing.T) {
+	tests := []struct {
+		name      string
+		rootAttrs string
+		want      string
+	}{
+		{
+			name:      "qualified schemaLocation keeps its prefix",
+			rootAttrs: `xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd"`,
+			want:      `xsi:schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd"`,
+		},
+		{
+			name:      "unqualified schemaLocation is left alone",
+			rootAttrs: `xmlns="urn:mpeg:dash:schema:mpd:2011" schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd"`,
+			want:      `schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<MPD ` + tt.rootAttrs + ` profiles="urn:mpeg:dash:profile:isoff-live:2011" type="static">
+  <Period id="p0"/>
+</MPD>`)
+
+			m := new(MPD)
+			if err := m.Decode(in); err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+
+			out, err := m.Encode()
+			if err != nil {
+				t.Fatalf("Encode() error = %v", err)
+			}
+
+			assert.Contains(t, string(out), tt.want)
+			assert.Equal(t, 1, strings.Count(string(out), `schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd"`))
+		})
+	}
+}
